@@ -14,6 +14,10 @@ def get_heading(section):
     else:
         return ''
 
+def my_replace(st, l,r, new):
+    #erase [l,r) range and replace with 'new'
+    st = st[:l] + new + st[r:]
+
 def make_statement():
     path = join('package', 'statement-sections', 'vietnamese')
     files = [f for f in listdir(path) if isfile(join(path, f))]
@@ -48,16 +52,106 @@ def make_statement():
                 s += infile.read()
                 s += line
 
+    specials = r"\`*_{}[]<>#+-.!|"
+
     s = s.replace(b'$', b'~')
-    s = s.replace(b'\\begin{itemize}', b'')
-    s = s.replace(b'\\item', b'-')
-    s = s.replace(b'\\end{itemize}', b'')
-    s = re.sub(b"\\\\bf{(.*)}", b'**\\1**\n', s) 
-    s = re.sub(b"\\\\it{(.*)}", b'*\\1*', s)
-    s = s.replace(b'    -', b'-')
+    s = s.replace(b'~~', b'$$') #$$ is valid in both
+    s = s.replace(b'\begin{center}', b'<center>')
+    s = s.replace(b'\end{center}', b'</center>')
+
+    # lists, nests supported
+    # I do expect the .tex file to be well-formatted (line by line)
+    
+    indent = 0
+    modes = [] # 0 : unordered, 1 : ordered 
+
+    lines = str(s).split('\n')
+    for line in lines:
+        if line.count('\\begin{itemize}'):
+            indent += 4
+            modes.append(0)
+        if line.count('\\begin{enumerate}'):
+            indent += 4
+            modes.append(1)
+        if line.count('\\end{enumerate}') or line.count('\\end{itemize}'):
+            indent -= 4
+            modes.pop(-1)
+        if modes:
+            mode = modes[-1]
+            if mode == 0 :
+                line = line.replace('\\item', b'-')
+            else :
+                line = line.replace('\\item', b'1.')
+            line = " "*indent + line
+
+    s = "\n".join(lines)
+    
+    #simple text formats: bold font, italic, monospace, underline, struck out
+    #and stupid quotes
+    
+    formats = ['\\bf{', '\\textbf{',
+               '\\it{', '\\textit{',
+               '\\t{', '\\tt{', '\\texttt{',
+               # b'\\emph{', b'\\underline{', impossible to do underline in markdown
+               '\sout{', '\textsc{',
+               '`', '``'
+               ]
+    repls = ['**', '**',
+             '*', '*',
+             '`', '`', '`',
+             '~~', '~~',
+             "'", '"']   
+
+    cur = 0
+    INF = 10**9
+    length = len(formats)
+    positions = [None] * length
+
+    while True :
+        opt = 0
+        for i in range(length):
+            positions[i] = s.find(formats[i], cur)
+            if positions[i] == -1 :
+                positions[i] = INF
+            if positions[i] < positions[opt] :
+                opt = i
+        p = positions[opt] 
+        if p == INF :
+            break
+
+        my_replace(s, p, p+len(formats[opt]), repls[opt])
+        cur = p + 1
+        if opt < (2+2+3+2) :
+            cur = s.find('}', cur)
+        else :
+            cur = s.find("'" * len(formats[opt]), cur)
+        my_replace(s, cur, cur+1, repls[opt])
+
+    
+    # does this (below) really needed?
+    # s = s.replace(b'    -', b'-')
+
+    #code blocks
+    s = s.replace('\\begin{lstlisting}', '```')
+    s = s.replace('\\end{lstlisting}', '```')
+
+    #polygon's stupid stuffs
+    
+    #confuses with html tags
+    s = s.replace('<<', '\<\<')
+    s = s.replace('>>', '\>\>') 
+    #stupid!
+    s = s.replace('~---', '$&ndash;$')
+    s = s.replace('"---', '$&ndash;$')
+    
 
     with open(join('output', 'statement-lqdoj.txt'), 'wb') as f:
-        f.write(s)
+        f.write(bytes(s, 'utf-8'))
 
-
+# print("nice hehe")
+# to-do list
+# - text size
+# - \url, \href
+# - \includegraphics
+# too sleepy rn
 
