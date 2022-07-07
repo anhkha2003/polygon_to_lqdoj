@@ -111,31 +111,50 @@ def make_statement():
     # lists, nests supported
     # I do expect the .tex file to be well-formatted (line by line)
     
+<<<<<<< HEAD
     indent = -2
+=======
+    indent = -4
+>>>>>>> aa9422b36a37bf58e2c0833d9eccc4258ce9a05d
     modes = [] # 0 : unordered, 1 : ordered 
 
     lines = str(s).split('\n')
     new_lines = []
     for line in lines:
         if line.count(r'\begin{itemize}'):
+<<<<<<< HEAD
             indent += 2
+=======
+            indent += 4
+>>>>>>> aa9422b36a37bf58e2c0833d9eccc4258ce9a05d
             modes.append(0)
             line = line.replace(r'\begin{itemize}', '')
             print("Found unordered list")
         if line.count(r'\begin{enumerate}'):
+<<<<<<< HEAD
             indent += 2
+=======
+            indent += 4
+>>>>>>> aa9422b36a37bf58e2c0833d9eccc4258ce9a05d
             modes.append(1)
             line = line.replace(r'\begin{enumerate}', '')
             print("Found ordered list")
         if line.count(r'\end{enumerate}') or line.count(r'\end{itemize}'):
+<<<<<<< HEAD
             indent -= 2
+=======
+            indent -= 4
+>>>>>>> aa9422b36a37bf58e2c0833d9eccc4258ce9a05d
             modes.pop(-1)
             line = line.replace(r'\end{enumerate}', '')
             line = line.replace(r'\end{itemize}', '')
             print("End list")
         if modes:
             mode = modes[-1]
+<<<<<<< HEAD
             line = line.strip()
+=======
+>>>>>>> aa9422b36a37bf58e2c0833d9eccc4258ce9a05d
             if mode == 0 :
                 line = line.replace(r'\item', '-')
             else :
@@ -277,4 +296,8 @@ def make_statement():
     with open(join('output', 'statement-lqdoj.txt'), 'w', encoding = 'utf-8') as f:
         f.write(s)
 
+<<<<<<< HEAD
 # tabulars and images
+=======
+# tabulars and images
+>>>>>>> aa9422b36a37bf58e2c0833d9eccc4258ce9a05d
