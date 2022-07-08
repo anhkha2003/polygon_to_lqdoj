@@ -10,7 +10,7 @@ except Exception:
     pass
  
 unzip_package(NAME)
-run_doall()
-rename_files()
-zip_tests()
+path = join('package', 'statements', 'vietnamese')
+os.makedirs(path, exist_ok=True)
+shutil.copy(join('package', NAME + '.tex'), join(path, 'problem.tex'))
 make_statement()

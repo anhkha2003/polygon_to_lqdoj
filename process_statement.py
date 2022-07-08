@@ -5,7 +5,7 @@
 
 import os, re
 from os import listdir
-from os.path import isfile, join
+from os.path import isfile, join, isdir
 
 def get_heading(section):
     if section == 'input.tex':
@@ -21,47 +21,17 @@ def get_heading(section):
     else:
         return ''
 
+
 def my_replace(st, l,r, new):
     #erase [l,r) range and replace with 'new'
     return st[:l] + new + st[r:]
 
-def make_statement():
-    path = join('package', 'statement-sections', 'vietnamese')
-    files = [f for f in listdir(path) if isfile(join(path, f))]
-    sections = ['legend.tex', 'input.tex', 'interaction.tex', 'output.tex', 'example' ,'notes.tex', 'scoring.tex']
-    #s = bytes()
-    s = str()
-    endl = "\n\n"#.encode('utf-8')
 
-    for section in sections:
-        if section == 'example':
-            s += '##Ví dụ:'#.encode('utf-8')
-            s += endl
-            example_files = [f for f in files if f.startswith('example')]
-            for exp in example_files:
-                index = int(exp.split('.')[1])
-                if exp[-1] == 'a':
-                    s += ('**Output ' + str(index) + ':**')#.encode('utf-8')
-                else:
-                    s += ('**Input ' + str(index) + ':**')#.encode('utf-8')
-                s += endl
-
-                with open(join(path, exp), 'r') as exp_text:
-                    a = exp_text.read().split('\n')
-                    for i in a:
-                        s += '    ' + i + '\n'
-
-        elif (isfile(join(path, section))):
-            with open(join(path, section), 'r', encoding = 'utf-8') as infile:
-                heading = get_heading(section)
-                if heading:
-                    s += heading#.encode('utf-8')
-                    s += endl
-                s += infile.read()
-                s += endl
-
+def edit_statement(s):
     specials = r"\`*_{}[]<>#+-.!|"
     #escape specials
+
+    endl = "\n\n"
 
     s = s.replace(r'$', r'~')
     s = s.replace(r'~~', r'$$') #$$ is valid in both
@@ -273,8 +243,115 @@ def make_statement():
     #stupid!
     s = s.replace(r'~---', r'~&ndash;~')
     s = s.replace(r'"---', r'~&ndash;~')
-  
+    
+    # tabulars and images  
+    return s
+
+
+def make_example(path, example_files):
+    s = ''
+    for exp in example_files:
+        index = int(exp.split('.')[1])
+        if exp[-1] == 'a':
+            s += ('**Output ' + str(index) + ':**')
+        else:
+            s += ('**Input ' + str(index) + ':**')
+        s += '\n\n'
+
+        with open(join(path, exp), 'r') as exp_text:
+            a = exp_text.read().split('\n')
+            for i in a:
+                s += '    ' + i + '\n'
+    return s
+
+
+def make_raw_example(text):
+    s = ''
+    examples = re.findall(r'\\exmp{((.|\n)*?)}{((.|\n)*?)}', text)
+    for i, example in enumerate(examples):
+        s += ('**Input ' + str(i + 1) + ':**')
+        s += '\n\n'
+        for line in example[0].split('\n'):
+            s += '    ' + line.strip() + '\n'
+        s += '\n' + ('**Output ' + str(i + 1) + ':**')
+        s += '\n\n'
+        for line in example[2].split('\n'):
+            s += '    ' + line.strip() + '\n'
+    return s
+
+
+def make_statement_from_sections():
+    path = join('package', 'statement-sections', 'vietnamese')
+    if not isdir(path):
+        path = join('package', 'statement-sections', 'english')
+    files = [f for f in listdir(path) if isfile(join(path, f))]
+    sections = ['legend.tex', 'input.tex', 'interaction.tex', 'output.tex', 'example' ,'notes.tex', 'scoring.tex']
+    s = str()
+    endl = "\n\n"
+
+    for section in sections:
+        if section == 'example':
+            s += '##Ví dụ:'#.encode('utf-8')
+            s += endl
+            example_files = [f for f in files if f.startswith('example')]
+            s += make_example(path, example_files)
+        elif (isfile(join(path, section))):
+            with open(join(path, section), 'r', encoding = 'utf-8') as infile:
+                heading = get_heading(section)
+                if heading:
+                    s += heading#.encode('utf-8')
+                    s += endl
+                s += infile.read()
+                s += endl
+
+    s = edit_statement(s)
     with open(join('output', 'statement-lqdoj.txt'), 'w', encoding = 'utf-8') as f:
         f.write(s)
 
-# tabulars and images
+
+def make_statement_from_tex():
+    path = join('package', 'statements', 'vietnamese')
+    if not isdir(path):
+        path = join('package', 'statements', 'english')
+    tex_file = 'problem.tex'
+    s = str()
+    endl = "\n\n"
+
+    with open(join(path, tex_file), 'r', encoding = 'utf-8') as infile:
+        s = infile.read()
+
+    s = edit_statement(s)
+
+    lines = s.split('\n')
+
+    example_files = []
+    for line in lines:
+        if line.startswith('\\begin{problem}'):
+            s = s.replace(line, '')
+        if line.startswith('\\end{problem}'):
+            s = s.replace(line, '')
+        if line.startswith('\\exmpfile'):
+            exp_input = line.split('{')[1].split('}')[0]
+            exp_output = line.split('{')[2].split('}')[0]
+            example_files.append(exp_input)
+            example_files.append(exp_output)
+            s = s.replace(line, '')
+
+    s = re.sub(r'\\begin{example}(.|\n)*\\end{example}', make_example(path, example_files) + make_raw_example(s), s)
+    s = s.replace('\\InputFile', '##Input##\n')
+    s = s.replace('\\Interaction', '##Tương tác##\n')
+    s = s.replace('\\OutputFile', '##Output##\n')
+    s = s.replace('\\Scoring', '##Giới hạn:##\n')
+    s = s.replace('\\Examples', '##Ví dụ:##\n')
+    s = s.replace('\\Example', '##Ví dụ:##\n')
+    s = s.replace('\\Notes', '##Giải thích:##\n')
+
+    with open(join('output', 'statement-lqdoj.txt'), 'w', encoding = 'utf-8') as f:
+        f.write(s)
+
+
+def make_statement():
+    if isdir(join('package', 'statement-sections')):
+        make_statement_from_sections()
+    else:
+        make_statement_from_tex()

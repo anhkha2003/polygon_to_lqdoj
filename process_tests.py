@@ -19,7 +19,8 @@ def unzip_package(name):
 # run doall.bat
 def run_doall():
     os.chdir('package')
-    subprocess.call([r"doall.bat"])
+    if isfile("doall.bat"):
+        subprocess.call([r"doall.bat"])
     os.chdir('..')
 
 # rename files input/output
